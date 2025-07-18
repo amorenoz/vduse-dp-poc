@@ -35,21 +35,21 @@ func createVduseDevice(name string) (*cdiSpecs.Device, error) {
 	}
 	err := kvdpa.AddVduseDevice(config)
 	if err != nil {
-		fmt.Println("Error creating vduse device:", err.Error())
+		return nil, fmt.Errorf("Error creating vduse device: %v", err)
 	}
 
 	err = kvdpa.AddVdpaDevice("vduse", name)
 	if err != nil {
-		return nil, fmt.Errorf("error creating vdpa device: %s", err.Error())
+		return nil, fmt.Errorf("error creating vdpa device: %v", err)
 	}
 
 	dev, err := kvdpa.GetVdpaDevice(name)
 	if err != nil {
-		return nil, fmt.Errorf("error getting vdpa device: %s", err.Error())
+		return nil, fmt.Errorf("error getting vdpa device: %v", err)
 	}
 	err = dev.Bind(kvdpa.VhostVdpaDriver)
 	if err != nil {
-		return nil, fmt.Errorf("error binding vdpa device: %s", err.Error())
+		return nil, fmt.Errorf("error binding vdpa device: %v", err)
 	}
 	vhostVdpaPath := dev.VhostVdpa().Path()
 
@@ -85,7 +85,7 @@ func main() {
 		name := fmt.Sprintf("vduse%d", i)
 		devSpec, err := createVduseDevice(name)
 		if err != nil {
-			fmt.Printf("%s: Error creating device: %s", name, err.Error())
+			fmt.Printf("%s: Error creating device: %s\n", name, err.Error())
 			continue
 		}
 
