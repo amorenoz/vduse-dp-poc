@@ -6,60 +6,159 @@ import (
 	"os/signal"
 
 	"github.com/k8snetworkplumbingwg/govdpa/pkg/kvdpa"
+
+	"github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
+	cdiSpecs "github.com/container-orchestrated-devices/container-device-interface/specs-go"
 )
 
+const (
+	resourcePrefix = "vduse.io"
+	poolName       = "default"
+	resourceKind   = "vduse"
+	cdiVersion     = "0.6.0"
+	specFileName   = "vduse-devices.json"
+	specDir        = "/var/run/cdi"
+	numDevices     = 20
+)
+
+func createVduseDevice(name string) (*cdiSpecs.Device, error) {
+	virtioConfig := kvdpa.VirtioNetConf{}
+	virtioConfig.MaxVirtqueuePairs = 1
+	config := kvdpa.VduseDevConfig{
+		Name:     name,
+		VendorID: 0,
+		DeviceID: 1,
+		Features: 0xb38009fc3,
+		VQNum:    2,
+		VQAlign:  4096,
+		Config:   &virtioConfig,
+	}
+	err := kvdpa.AddVduseDevice(config)
+	if err != nil {
+		fmt.Println("Error creating vduse device:", err.Error())
+	}
+
+	err = kvdpa.AddVdpaDevice("vduse", name)
+	if err != nil {
+		return nil, fmt.Errorf("error creating vdpa device: %s", err.Error())
+	}
+
+	dev, err := kvdpa.GetVdpaDevice(name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting vdpa device: %s", err.Error())
+	}
+	err = dev.Bind(kvdpa.VhostVdpaDriver)
+	if err != nil {
+		return nil, fmt.Errorf("error binding vdpa device: %s", err.Error())
+	}
+	vhostVdpaPath := dev.VhostVdpa().Path()
+
+	// Generate CDI spec for device
+	edits := cdiSpecs.ContainerEdits{
+		// Add the device node to the container.
+		// The container path will be the same as the host path.
+		DeviceNodes: []*cdiSpecs.DeviceNode{
+			{
+				Path:        vhostVdpaPath,
+				HostPath:    vhostVdpaPath,
+				Type:        "c",
+				Permissions: "rw",
+			},
+		},
+	}
+
+	devSpec := cdiSpecs.Device{
+		Name:           name,
+		ContainerEdits: edits,
+	}
+	return &devSpec, nil
+}
+
 func main() {
-	for i := 0; i < 20; i++ {
+	spec := cdiSpecs.Spec{
+		Version: cdiSpecs.CurrentVersion,
+		Kind:    fmt.Sprintf("%s/%s", resourcePrefix, resourceKind),
+		Devices: []cdiSpecs.Device{},
+	}
+
+	for i := 0; i < numDevices; i++ {
 		name := fmt.Sprintf("vduse%d", i)
-		virtioConfig := kvdpa.VirtioNetConf{}
-		virtioConfig.MaxVirtqueuePairs = 1
-		config := kvdpa.VduseDevConfig{
-			Name:     name,
-			VendorID: 0,
-			DeviceID: 1,
-			Features: 0xb38009fc3,
-			VQNum:    2,
-			VQAlign:  4096,
-			Config:   &virtioConfig,
-		}
-		err := kvdpa.AddVduseDevice(config)
+		devSpec, err := createVduseDevice(name)
 		if err != nil {
-			fmt.Println("Error creating vduse device:", err.Error())
-		}
-
-		err = kvdpa.AddVdpaDevice("vduse", name)
-		if err != nil {
-			fmt.Println("Error creating vdpa device:", err.Error())
-		}
-
-		dev, err := kvdpa.GetVdpaDevice(name)
-		if err != nil {
-			fmt.Println("Error getting vdpa device:", err.Error())
+			fmt.Printf("%s: Error creating device: %s", name, err.Error())
 			continue
 		}
-		err = dev.Bind(kvdpa.VhostVdpaDriver)
+
+		annoKey, err := cdi.AnnotationKey(resourcePrefix, resourceKind)
 		if err != nil {
-			fmt.Println("Error binding vdpa device:", err.Error())
+			fmt.Printf("error annotation key %v\n", err)
+
 		}
-		fmt.Printf("vduse dev created: %s -> %s", dev.Name(), dev.VhostVdpa().Path())
+		annoVal, err := cdi.AnnotationValue([]string{cdi.QualifiedName(resourcePrefix, resourceKind, name)})
+		if err != nil {
+			fmt.Printf("error annotation val %v\n", err)
+
+		}
+
+		fmt.Printf("vduse dev created: %s. Annotation: %s=\"%s\"\n", devSpec.Name,
+			annoKey, annoVal)
+		spec.Devices = append(spec.Devices, *devSpec)
 	}
-	fmt.Println("Created vduse devices. Ctr-C to stop")
+
+	cdiName, err := cdi.GenerateNameForSpec(&spec)
+	if err != nil {
+		fmt.Printf("Error generating name for spec  %v\n", err)
+		os.Exit(1)
+	}
+
+	cdiName = fmt.Sprintf("%s-%s", cdiName, poolName)
+	fmt.Printf("\nWriting CDI spec to %s\n", cdiName)
+
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		fmt.Printf("Error creating CDI spec directory %s: %v\n", specDir, err)
+		os.Exit(1)
+	}
+
+	if err := cdi.GetRegistry().SpecDB().WriteSpec(&spec, fmt.Sprintf("%s-%s.json", cdiName, poolName)); err != nil {
+		fmt.Printf("Cannot create CDI json %v", err)
+		deleteAllVduseDevices()
+		os.Exit(-1)
+	}
+
+	fmt.Println("Done created vduse devices. Ctr-C to stop")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	<-c
 	fmt.Println("Deleting vduse devices:")
-	for i := 0; i < 20; i++ {
+	deleteAllVduseDevices()
+	if err := cdi.GetRegistry().SpecDB().RemoveSpec(fmt.Sprintf("%s-%s", cdiName, poolName)); err != nil {
+		fmt.Printf("Cannot delete CDI json %v", err)
+		deleteAllVduseDevices()
+		os.Exit(-1)
+	}
+}
+
+func deleteVduseDevice(name string) error {
+	err := kvdpa.DeleteVdpaDevice(name)
+	if err != nil {
+		fmt.Println("Error deleting vdpa %s device:", name, err.Error())
+	}
+
+	err = kvdpa.DestroyVduseDevice(name)
+	if err != nil {
+		fmt.Println("Error deleting vduse %s device:", name, err.Error())
+	}
+	return err
+}
+
+func deleteAllVduseDevices() error {
+	for i := 0; i < numDevices; i++ {
 		name := fmt.Sprintf("vduse%d", i)
-
-		err := kvdpa.DeleteVdpaDevice(name)
+		err := deleteVduseDevice(name)
 		if err != nil {
-			fmt.Println("Error deleting vdpa %s device:", name, err.Error())
-		}
-
-		err = kvdpa.DestroyVduseDevice(name)
-		if err != nil {
-			fmt.Println("Error deleting vduse %s device:", name, err.Error())
+			fmt.Printf("%s: Error deleting vduse device: %s", name, err.Error())
 		}
 	}
+	return nil
 }
