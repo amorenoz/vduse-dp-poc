@@ -1,0 +1,82 @@
+---
+# In openshfit add:
+# oc adm policy add-scc-to-user privileged -z vduse-device-plugin -n vduse-device-plugin
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vduse-device-plugin
+  namespace: vduse-device-plugin
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vduse-device-plugin
+  namespace: vduse-device-plugin
+  labels:
+    tier: node
+    app: vdusedp
+spec:
+  selector:
+    matchLabels:
+      name: vduse-device-plugin
+  template:
+    metadata:
+      labels:
+        name: vduse-device-plugin
+        tier: node
+        app: vdusedp
+    spec:
+      hostNetwork: true
+      serviceAccountName: vduse-device-plugin
+      containers:
+      - name: kube-vdusedp
+        image: quay.io/amorenoz/vduse-dp:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "40Mi"
+          limits:
+            cpu: 1
+            memory: "200Mi"
+        volumeMounts:
+        #- name: devicesock
+        #  mountPath: /var/lib/kubelet/device-plugins
+        #  readOnly: false
+        #- name: plugins-registry
+        #  mountPath: /var/lib/kubelet/plugins_registry
+        #  readOnly: false
+        #- name: log
+        #  mountPath: /var/log
+        #- name: config-volume
+        #  mountPath: /etc/pcidp
+        - name: device-info
+          mountPath: /var/run/k8s.cni.cncf.io/devinfo/dp
+        - name: cdi
+          mountPath: /var/run/cdi
+      volumes:
+        - name: cdi
+          hostPath:
+            path: /var/run/cdi
+        #- name: devicesock
+        #  hostPath:
+        #    path: /var/lib/kubelet/device-plugins
+        #- name: plugins-registry
+        #  hostPath:
+        #    path: /var/lib/kubelet/plugins_registry
+        #- name: log
+        #  hostPath:
+        #    path: /var/log
+        - name: device-info
+          hostPath:
+            path: /var/run/k8s.cni.cncf.io/devinfo/dp
+            type: DirectoryOrCreate
+        #- name: config-volume
+        #  configMap:
+        #    name: vdusedp-config
+        #    items:
+        #    - key: config.json
+        #      path: config.json
