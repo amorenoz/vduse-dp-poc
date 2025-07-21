@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/k8snetworkplumbingwg/govdpa/pkg/kvdpa"
 
@@ -33,20 +34,25 @@ func createVduseDevice(name string) (*cdiSpecs.Device, error) {
 		VQAlign:  4096,
 		Config:   &virtioConfig,
 	}
+	fmt.Printf("%s: Adding vduse device\n", name)
 	err := kvdpa.AddVduseDevice(config)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating vduse device: %v", err)
 	}
 
+	fmt.Printf("%s: Adding vdpa device bia exec\n", name)
 	err = kvdpa.AddVdpaDevice("vduse", name)
 	if err != nil {
 		return nil, fmt.Errorf("error creating vdpa device: %v", err)
 	}
 
+	fmt.Printf("%s: Getting vdpa device\n", name)
 	dev, err := kvdpa.GetVdpaDevice(name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting vdpa device: %v", err)
 	}
+
+	fmt.Printf("%s: Binding vdpa device\n", name)
 	err = dev.Bind(kvdpa.VhostVdpaDriver)
 	if err != nil {
 		return nil, fmt.Errorf("error binding vdpa device: %v", err)
