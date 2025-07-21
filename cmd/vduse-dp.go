@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/k8snetworkplumbingwg/govdpa/pkg/kvdpa"
@@ -34,13 +35,14 @@ func createVduseDevice(name string) (*cdiSpecs.Device, error) {
 		VQAlign:  4096,
 		Config:   &virtioConfig,
 	}
+
 	fmt.Printf("%s: Adding vduse device\n", name)
 	err := kvdpa.AddVduseDevice(config)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating vduse device: %v", err)
 	}
 
-	fmt.Printf("%s: Adding vdpa device bia exec\n", name)
+	fmt.Printf("%s: Adding vdpa device exec\n", name)
 	err = kvdpa.AddVdpaDevice("vduse", name)
 	if err != nil {
 		return nil, fmt.Errorf("error creating vdpa device: %v", err)
@@ -85,6 +87,13 @@ func main() {
 		Version: cdiSpecs.CurrentVersion,
 		Kind:    fmt.Sprintf("%s/%s", resourcePrefix, resourceKind),
 		Devices: []cdiSpecs.Device{},
+	}
+
+	err := os.WriteFile(filepath.Join("/", "sys", "bus", "vdpa", "drivers_autoprobe"),
+		[]byte("0\n"), os.FileMode(os.O_SYNC))
+	if err != nil {
+		fmt.Printf("Failed to disable vdpa autoprobe: %v\n", err)
+		os.Exit(1)
 	}
 
 	for i := 0; i < numDevices; i++ {
