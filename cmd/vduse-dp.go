@@ -133,7 +133,7 @@ func main() {
 
 	fmt.Println("Done created vduse devices. Ctr-C to stop")
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	<-c
 	fmt.Println("Deleting vduse devices:")
