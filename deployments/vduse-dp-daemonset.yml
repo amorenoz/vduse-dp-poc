@@ -35,6 +35,7 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
+          runAsUser: 0
         resources:
           requests:
             cpu: "250m"
