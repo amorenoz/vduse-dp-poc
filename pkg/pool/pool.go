@@ -38,6 +38,18 @@ func NewPool(name, prefix, kind string, num int, vduse *vduse.VduseManager) *Poo
 	}
 }
 
+func (p *Pool) GetResourceName() string {
+	return p.name
+}
+
+func (p *Pool) GetResourcePrefix() string {
+	return p.resourcePrefix
+}
+
+func (p *Pool) GetResourceKind() string {
+	return p.resourceKind
+}
+
 func (p *Pool) Start() error {
 	var errs error = nil
 
@@ -101,19 +113,25 @@ func (p *Pool) Stop() error {
 	return errs
 }
 
-func (p *Pool) GetAnnotation(name string) (string, string, error) {
+func (p *Pool) GetAnnotation(deviceIDs []string) (map[string]string, error) {
+	annotations := make(map[string]string, 0)
+
 	annoKey, err := cdi.AnnotationKey(p.resourcePrefix, p.resourceKind)
 	if err != nil {
-		return "", "", fmt.Errorf("error annotation key: %w\n", err)
+		return nil, fmt.Errorf("error annotation key: %w\n", err)
 
 	}
-	annoVal, err := cdi.AnnotationValue([]string{cdi.QualifiedName(p.resourcePrefix, p.resourceKind, name)})
+	devices := make([]string, 0)
+	for _, id := range deviceIDs {
+		devices = append(devices, cdi.QualifiedName(p.resourcePrefix, p.resourceKind, id))
+	}
+	annoVal, err := cdi.AnnotationValue(devices)
 	if err != nil {
-		return "", "", fmt.Errorf("error annotation val %w\n", err)
+		return nil, fmt.Errorf("error annotation val %w\n", err)
 
 	}
-	return annoKey, annoVal, nil
-
+	annotations[annoKey] = annoVal
+	return annotations, nil
 }
 
 func (p *Pool) setCdiName(spec *cdiSpecs.Spec) error {
