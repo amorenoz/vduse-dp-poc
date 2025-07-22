@@ -87,24 +87,26 @@ func (s *Server) startMonitor() {
 		"endpoint":     s.endPoint,
 		"resourceName": s.pool.GetResourceName(),
 	})
-	for {
-		select {
-		case stop := <-s.stopMonitor:
-			if stop {
-				clog.Infof("stopping")
-				return
+	go func() {
+		for {
+			select {
+			case stop := <-s.stopMonitor:
+				if stop {
+					clog.Infof("stopping")
+					return
+				}
+			default:
+				updated, err := s.pool.Update()
+				if err != nil {
+					// Socket file not found; restart server
+					glog.Warningf("pool update failed: %v", err)
+				} else if updated {
+					s.updateSignal <- true
+				}
 			}
-		default:
-			updated, err := s.pool.Update()
-			if err != nil {
-				// Socket file not found; restart server
-				glog.Warningf("pool update failed: %v", err)
-			} else if updated {
-				s.updateSignal <- true
-			}
+			time.Sleep(time.Second * time.Duration(updateInterval))
 		}
-		time.Sleep(time.Second * time.Duration(updateInterval))
-	}
+	}()
 }
 
 func (s *Server) Stop() error {
