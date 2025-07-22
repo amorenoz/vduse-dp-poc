@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	plugin "github.com/amorenoz/vduse-dp-poc/pkg/deviceplugin"
 	"github.com/amorenoz/vduse-dp-poc/pkg/pool"
 	"github.com/amorenoz/vduse-dp-poc/pkg/vduse"
 )
@@ -21,6 +22,7 @@ const (
 )
 
 var logLevel = flag.String("log-level", "info", "the log level")
+var cdi = flag.Bool("cdi", false, "whether to use cdi specs")
 
 func main() {
 	flag.Parse()
@@ -46,6 +48,11 @@ func main() {
 		log.Errorf("failed to write CDI spec: %v", err)
 	}
 
+	server := plugin.NewDevicePluginServer(pool, *cdi)
+	if err := server.Start(); err != nil {
+		log.Fatalf("server initialization failed: %v", err)
+	}
+
 	log.Infof("pool created. Ctr-C to stop")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -53,6 +60,9 @@ func main() {
 	<-c
 	log.Infof("cleaning up")
 
+	if err := server.Stop(); err != nil {
+		log.Errorf("failed to stop server %v", err)
+	}
 	if err := pool.RemoveCdiSpec(); err != nil {
 		log.Errorf("failed to remove CDI spec: %v", err)
 	}

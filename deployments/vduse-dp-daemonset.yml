@@ -44,12 +44,12 @@ spec:
             cpu: 1
             memory: "200Mi"
         volumeMounts:
-        #- name: devicesock
-        #  mountPath: /var/lib/kubelet/device-plugins
-        #  readOnly: false
-        #- name: plugins-registry
-        #  mountPath: /var/lib/kubelet/plugins_registry
-        #  readOnly: false
+        - name: devicesock
+          mountPath: /var/lib/kubelet/device-plugins
+          readOnly: false
+        - name: plugins-registry
+          mountPath: /var/lib/kubelet/plugins_registry
+          readOnly: false
         #- name: log
         #  mountPath: /var/log
         #- name: config-volume
@@ -62,12 +62,12 @@ spec:
         - name: cdi
           hostPath:
             path: /var/run/cdi
-        #- name: devicesock
-        #  hostPath:
-        #    path: /var/lib/kubelet/device-plugins
-        #- name: plugins-registry
-        #  hostPath:
-        #    path: /var/lib/kubelet/plugins_registry
+        - name: devicesock
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: plugins-registry
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
         #- name: log
         #  hostPath:
         #    path: /var/log
