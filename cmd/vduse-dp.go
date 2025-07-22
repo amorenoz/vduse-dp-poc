@@ -50,6 +50,15 @@ func main() {
 
 	server := plugin.NewDevicePluginServer(pool, *cdi)
 	if err := server.Start(); err != nil {
+		if err := pool.RemoveCdiSpec(); err != nil {
+			log.Errorf("failed to remove CDI spec: %v", err)
+		}
+		if err := pool.Stop(); err != nil {
+			log.Errorf("failed to stop pool: %v", err)
+		}
+		if err := vduseMan.Stop(); err != nil {
+			log.Errorf("failed to stop vduseManager: %v", err)
+		}
 		log.Fatalf("server initialization failed: %v", err)
 	}
 
