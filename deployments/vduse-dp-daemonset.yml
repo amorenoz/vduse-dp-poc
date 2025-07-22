@@ -32,7 +32,8 @@ spec:
       containers:
       - name: kube-vdusedp
         image: quay.io/amorenoz/vduse-dp:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        args: ["--log-level", "debug"]
         securityContext:
           privileged: true
           runAsUser: 0
@@ -58,7 +59,14 @@ spec:
           mountPath: /var/run/k8s.cni.cncf.io/devinfo/dp
         - name: cdi
           mountPath: /var/run/cdi
+        - name: sys-bus
+          mountPath: /sys/bus/
       volumes:
+        # Need to mount sys/bus explicitly because kind remounts /sys ro.
+        # https://github.com/kubernetes-sigs/kind/blob/c68a1cf537d6801e2750b3ce0f3e478ad44619a5/images/base/files/usr/local/bin/entrypoint#L36-L41
+        - name: sys-bus
+          hostPath:
+            path: /sys/bus
         - name: cdi
           hostPath:
             path: /var/run/cdi
