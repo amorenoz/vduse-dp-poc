@@ -2,6 +2,7 @@ package vduse
 
 import (
 	cdiSpecs "github.com/container-orchestrated-devices/container-device-interface/specs-go"
+	nettypes "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 // Common information of a VDUSE device
@@ -33,4 +34,13 @@ func (d *VduseDevice) CdiSpecs() *cdiSpecs.Device {
 		ContainerEdits: edits,
 	}
 	return &devSpec
+}
+
+// Generate VdpaDevice information for DeviceInfo file.
+func (d *VduseDevice) DeviceInfo() *nettypes.VdpaDevice {
+	return &nettypes.VdpaDevice{
+		ParentDevice: d.name,
+		Driver:       "vhost_vdpa",
+		Path:         d.vhostVdpaPath,
+	}
 }

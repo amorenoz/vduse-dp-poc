@@ -7,6 +7,10 @@ import (
 
 	"github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
 	cdiSpecs "github.com/container-orchestrated-devices/container-device-interface/specs-go"
+	nettypes "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	nadutils "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/utils"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/amorenoz/vduse-dp-poc/pkg/vduse"
@@ -145,4 +149,41 @@ func (p *Pool) setCdiName(spec *cdiSpecs.Spec) error {
 	}
 	p.cdiName = fmt.Sprintf("%s-%s.json", cdiName, p.name)
 	return nil
+}
+
+func (p *Pool) StoreDeviceInfoFile(deviceIDs []string) error {
+	var devInfo nettypes.DeviceInfo
+
+	for _, id := range deviceIDs {
+		dev, ok := p.devices[id]
+		if !ok {
+			return fmt.Errorf("cannot store DeviceInfo file, not such device: %s", id)
+		}
+		devInfo = nettypes.DeviceInfo{
+			Type:    nettypes.DeviceInfoTypeVDPA,
+			Version: nettypes.DeviceInfoVersion,
+			Vdpa:    dev.DeviceInfo(),
+		}
+
+		resource := fmt.Sprintf("%s/%s", p.resourcePrefix, p.name)
+		if err := nadutils.CleanDeviceInfoForDP(resource, id); err != nil {
+			return fmt.Errorf("error cleaning device-info file before writing: %w", err)
+		}
+		if err := nadutils.SaveDeviceInfoForDP(resource, id, &devInfo); err != nil {
+			return fmt.Errorf("error creating device-info file: %w", err)
+		}
+	}
+	return nil
+}
+
+func (p *Pool) CleanDeviceInfoFile() error {
+	var errs error
+
+	for id := range p.devices {
+		resource := fmt.Sprintf("%s/%s", p.resourcePrefix, p.name)
+		if err := nadutils.CleanDeviceInfoForDP(resource, id); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	return errs
 }
