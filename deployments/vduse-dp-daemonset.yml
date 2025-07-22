@@ -61,12 +61,17 @@ spec:
           mountPath: /var/run/cdi
         - name: sys-bus
           mountPath: /sys/bus/
+        - name: dev
+          mountPath: /dev
       volumes:
         # Need to mount sys/bus explicitly because kind remounts /sys ro.
         # https://github.com/kubernetes-sigs/kind/blob/c68a1cf537d6801e2750b3ce0f3e478ad44619a5/images/base/files/usr/local/bin/entrypoint#L36-L41
         - name: sys-bus
           hostPath:
             path: /sys/bus
+        - name: dev
+          hostPath:
+            path: /dev/
         - name: cdi
           hostPath:
             path: /var/run/cdi
