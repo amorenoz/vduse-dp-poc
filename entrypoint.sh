@@ -9,4 +9,4 @@ usage()
     /bin/echo -e "./entrypoint.sh"
 }
 
-exec vduse-dp --log-level debug
+exec vduse-dp $@
