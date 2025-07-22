@@ -1,4 +1,4 @@
-module github.com/amorenoz/vduse-dp
+module github.com/amorenoz/vduse-dp-poc
 
 go 1.24.5
 
