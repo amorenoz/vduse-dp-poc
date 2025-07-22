@@ -2,8 +2,10 @@ package deviceplugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -57,6 +59,7 @@ func (s *Server) Start() error {
 		"resourceName": s.pool.GetResourceName(),
 	})
 	clog.Infof("starting Device Plugin Server: %s", s.pool.GetResourceName())
+	_ = s.cleanUp()
 
 	lis, err := net.Listen("unix", s.sockPath)
 	if err != nil {
@@ -116,7 +119,18 @@ func (s *Server) Stop() error {
 	s.termSignal <- true
 	s.grpcServer.Stop()
 	s.grpcServer = nil
-	return nil
+	return s.cleanUp()
+}
+
+func (s *Server) cleanUp() error {
+	var errs error
+	if err := os.Remove(s.sockPath); err != nil && !os.IsNotExist(err) {
+		errs = errors.Join(errs, err)
+	}
+	if err := s.pool.CleanDeviceInfoFile(); err != nil {
+
+	}
+	return errs
 }
 
 // Generic Plugin registration API
