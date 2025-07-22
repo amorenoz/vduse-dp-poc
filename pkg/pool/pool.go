@@ -21,19 +21,19 @@ type Pool struct {
 	resourcePrefix string
 	resourceKind   string
 	numDevices     int
-	devices        map[string]cdiSpecs.Device
+	devices        map[string]vduse.VduseDevice
 	vduse          *vduse.VduseManager
 	cdiName        string
 }
 
-func NewPool(name, prefix, kind string, num int, vduse *vduse.VduseManager) *Pool {
+func NewPool(name, prefix, kind string, num int, vduseMan *vduse.VduseManager) *Pool {
 	return &Pool{
 		name:           name,
 		resourcePrefix: prefix,
 		resourceKind:   kind,
 		numDevices:     num,
-		vduse:          vduse,
-		devices:        make(map[string]cdiSpecs.Device, 0),
+		vduse:          vduseMan,
+		devices:        make(map[string]vduse.VduseDevice, 0),
 		cdiName:        "",
 	}
 }
@@ -58,12 +58,12 @@ func (p *Pool) Start() error {
 		clog := log.WithFields(log.Fields{"vduse_device": name})
 
 		clog.Debugf("creating device")
-		devSpec, err := p.vduse.CreateDevice(name)
+		dev, err := p.vduse.CreateDevice(name)
 		if err != nil {
 			clog.Errorf("error creating vduse device: %v\n", err)
 			errs = errors.Join(errs, err)
 		} else {
-			p.devices[name] = *devSpec
+			p.devices[name] = *dev
 		}
 	}
 	return errs
@@ -74,6 +74,10 @@ func (p *Pool) WriteCdiSpec() error {
 		Version: cdiSpecs.CurrentVersion,
 		Kind:    fmt.Sprintf("%s/%s", p.resourcePrefix, p.resourceKind),
 		Devices: make([]cdiSpecs.Device, 0),
+	}
+
+	for _, device := range p.devices {
+		spec.Devices = append(spec.Devices, *device.CdiSpecs())
 	}
 
 	if err := p.setCdiName(&spec); err != nil {

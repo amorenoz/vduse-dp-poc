@@ -8,8 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/k8snetworkplumbingwg/govdpa/pkg/kvdpa"
-
-	cdiSpecs "github.com/container-orchestrated-devices/container-device-interface/specs-go"
 )
 
 type VduseManager struct {
@@ -31,7 +29,7 @@ func (v *VduseManager) Stop() error {
 }
 
 // Creates a VDUSE device
-func (v *VduseManager) CreateDevice(name string) (*cdiSpecs.Device, error) {
+func (v *VduseManager) CreateDevice(name string) (*VduseDevice, error) {
 	return v.createVduseDevice(name)
 }
 
@@ -47,7 +45,7 @@ func (v *VduseManager) disableAutoProbe() error {
 	}
 	return nil
 }
-func (v *VduseManager) createVduseDevice(name string) (*cdiSpecs.Device, error) {
+func (v *VduseManager) createVduseDevice(name string) (*VduseDevice, error) {
 	virtioConfig := kvdpa.VirtioNetConf{}
 	virtioConfig.MaxVirtqueuePairs = 1
 	config := kvdpa.VduseDevConfig{
@@ -86,22 +84,10 @@ func (v *VduseManager) createVduseDevice(name string) (*cdiSpecs.Device, error) 
 	}
 	vhostVdpaPath := dev.VhostVdpa().Path()
 
-	edits := cdiSpecs.ContainerEdits{
-		DeviceNodes: []*cdiSpecs.DeviceNode{
-			{
-				Path:        vhostVdpaPath,
-				HostPath:    vhostVdpaPath,
-				Type:        "c",
-				Permissions: "rw",
-			},
-		},
-	}
-
-	devSpec := cdiSpecs.Device{
-		Name:           name,
-		ContainerEdits: edits,
-	}
-	return &devSpec, nil
+	return &VduseDevice{
+		name:          name,
+		vhostVdpaPath: vhostVdpaPath,
+	}, nil
 }
 
 func (v *VduseManager) deleteVduseDevice(name string) error {
