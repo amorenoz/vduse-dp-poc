@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/container-orchestrated-devices/container-device-interface/pkg/cdi"
 	cdiSpecs "github.com/container-orchestrated-devices/container-device-interface/specs-go"
 	nettypes "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
 	nadutils "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/utils"
+	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 
 	log "github.com/sirupsen/logrus"
 
@@ -71,6 +73,11 @@ func (p *Pool) Start() error {
 		}
 	}
 	return errs
+}
+
+func (p *Pool) Update() (bool, error) {
+	// TBD
+	return true, nil
 }
 
 func (p *Pool) WriteCdiSpec() error {
@@ -149,6 +156,45 @@ func (p *Pool) setCdiName(spec *cdiSpecs.Spec) error {
 	}
 	p.cdiName = fmt.Sprintf("%s-%s.json", cdiName, p.name)
 	return nil
+}
+
+func (p *Pool) GetDeviceSpecs(deviceIDs []string) ([]*pluginapi.DeviceSpec, error) {
+	devSpecs := make([]*pluginapi.DeviceSpec, 0)
+
+	for _, id := range deviceIDs {
+		dev, ok := p.devices[id]
+		if !ok {
+			return nil, fmt.Errorf("GetDeviceSpecs failed, not such device: %s", id)
+		}
+		devSpecs = append(devSpecs, dev.DeviceSpecs())
+	}
+	log.WithFields(log.Fields{"deviceIDs": deviceIDs}).Infof("device specs: %v", devSpecs)
+	return devSpecs, nil
+}
+
+func (p *Pool) GetMounts(deviceIDs []string) ([]*pluginapi.Mount, error) {
+	mounts := make([]*pluginapi.Mount, 0)
+	log.WithFields(log.Fields{"deviceIDs": deviceIDs}).Infof("mounts: %v", mounts)
+	return mounts, nil
+}
+
+func (p *Pool) GetEnvs(deviceIDs []string) map[string]string {
+	envs := make(map[string]string)
+
+	key := fmt.Sprintf("%s_%s_%s", "VDUSEDEVICE", p.resourcePrefix, p.name)
+	key = strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
+	envs[key] = strings.Join(deviceIDs, ",")
+
+	log.WithFields(log.Fields{"deviceIDs": deviceIDs}).Infof("envs: %v", envs)
+	return envs
+}
+
+func (p *Pool) GetAPIDevices() []*pluginapi.Device {
+	devs := make([]*pluginapi.Device, 0)
+	for _, dev := range p.devices {
+		devs = append(devs, dev.APIDevice())
+	}
+	return devs
 }
 
 func (p *Pool) StoreDeviceInfoFile(deviceIDs []string) error {
