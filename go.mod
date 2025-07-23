@@ -67,4 +67,4 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/k8snetworkplumbingwg/govdpa => github.com/amorenoz/govdpa v0.0.0-20250721102101-b503056206fa
+replace github.com/k8snetworkplumbingwg/govdpa => github.com/amorenoz/govdpa v0.0.0-20250722154913-bbc4216f4ab2

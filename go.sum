@@ -1,8 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
-github.com/amorenoz/govdpa v0.0.0-20250721102101-b503056206fa h1:Gznc5ngT4vvHP87IbOFDsTcvCO84pdlvvyNkGQrPW3k=
-github.com/amorenoz/govdpa v0.0.0-20250721102101-b503056206fa/go.mod h1:SPaDIyUmwN03Bgn0u/mhoiE4o/+koeKh11VUsdsUX0U=
+github.com/amorenoz/govdpa v0.0.0-20250722154913-bbc4216f4ab2 h1:tKlZ/7Xf+EcIuPKxalC8oBj1Yyj+gLNZHF3c2Zm+zZM=
+github.com/amorenoz/govdpa v0.0.0-20250722154913-bbc4216f4ab2/go.mod h1:SPaDIyUmwN03Bgn0u/mhoiE4o/+koeKh11VUsdsUX0U=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
